@@ -1,0 +1,27 @@
+#include <stdio.h>
+
+int main() {
+    int n, i;
+    int process[20];
+
+    printf("Enter the number of processes: ");
+    scanf("%d", &n);
+
+    // Read process IDs
+    for (i = 0; i < n; i++) {
+        printf("Enter Process ID %d: ", i + 1);
+        scanf("%d", &process[i]);
+    }
+
+    printf("\n--- Simple Scheduler (FCFS) ---\n");
+
+    // Execute processes one by one
+    for (i = 0; i < n; i++) {
+        printf("Executing Process P%d...\n", process[i]);
+        printf("Process P%d Completed.\n\n", process[i]);
+    }
+
+    printf("All processes have been executed.\n");
+
+    return 0;
+}
