@@ -1,0 +1,122 @@
+NAME :- D.NAGABABU
+RG NO:- 192525228
+
+ 1. File System Space Management
+
+BEGIN
+    SET threshold = 80%
+    usage = GET_DISK_USAGE()
+
+    IF usage > threshold THEN
+        log_files = GET_LOG_FILES()
+        SORT log_files BY size DESCENDING
+
+        FOR each file IN log_files DO
+            IF file IS OLD THEN
+                COMPRESS or DELETE file
+            ENDIF
+
+            usage = GET_DISK_USAGE()
+
+            IF usage <= threshold THEN
+                BREAK
+            ENDIF
+        ENDFOR
+    ENDIF
+
+    PRINT "Disk usage:", usage
+END
+```
+
+ 2. Priority-Based CPU Scheduling
+
+BEGIN
+    INPUT process_list
+    SORT process_list BY priority DESCENDING
+
+    WHILE process_list IS NOT EMPTY DO
+        SELECT process WITH highest priority
+        ALLOCATE CPU
+        EXECUTE process
+
+        IF process IS completed THEN
+            REMOVE process FROM process_list
+        ELSE
+            REDUCE priority slightly
+            ADD process BACK to process_list
+        ENDIF
+    ENDWHILE
+
+    PRINT "All processes completed"
+END
+```
+
+ 3. RAM Allocation Among Virtual Machines
+
+
+BEGIN
+    total_RAM = 16 GB
+    host_reserved = 4 GB
+    available_RAM = total_RAM - host_reserved
+
+    INPUT number_of_VMs
+    min_RAM = 2 GB
+
+    FOR i = 1 TO number_of_VMs DO
+        IF available_RAM >= min_RAM THEN
+            ALLOCATE min_RAM TO VM[i]
+            available_RAM = available_RAM - min_RAM
+        ELSE
+            PRINT "Insufficient memory for VM", i
+        ENDIF
+    ENDFOR
+
+    PRINT "Remaining RAM:", available_RAM
+END
+```
+
+4. Hypervisor Selection
+
+
+BEGIN
+    INPUT performance_required
+    INPUT budget
+    INPUT hardware_access
+
+    IF performance_required = HIGH AND hardware_access = TRUE THEN
+        selected_hypervisor = "Type 1 Hypervisor"
+
+    ELSE IF budget = LOW THEN
+        selected_hypervisor = "Type 2 Hypervisor"
+
+    ELSE
+        selected_hypervisor = "Type 1 Hypervisor"
+    ENDIF
+
+    PRINT selected_hypervisor
+END
+```
+
+ 5. CPU and Memory Resource Management
+
+
+BEGIN
+    INPUT application_list
+
+    FOR each app IN application_list DO
+        CREATE cgroup FOR app
+        SET CPU limit FOR app
+        SET memory limit FOR app
+        ASSIGN app PROCESS TO cgroup
+    ENDFOR
+
+    MONITOR CPU AND MEMORY USAGE
+
+    IF any application exceeds its limit THEN
+        THROTTLE application
+    ENDIF
+
+    PRINT "Resource usage is controlled"
+END
+```
+
