@@ -1,0 +1,18 @@
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main() {
+    int fd;
+    char buf[20];
+
+    fd=open("test.txt",O_CREAT|O_RDWR,0644);
+    write(fd,"Hello UNIX",10);
+    lseek(fd,0,SEEK_SET);
+    read(fd,buf,10);
+    buf[10]='\0';
+
+    printf("File Data: %s\n",buf);
+    close(fd);
+    return 0;
+}
