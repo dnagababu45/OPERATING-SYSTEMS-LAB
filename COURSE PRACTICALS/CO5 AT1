@@ -1,0 +1,321 @@
+NAME : D.NAGABABU
+RG NO: 192525228
+CODE : CSA 0406
+COURSE      : OPERATING SYSTEMS
+
+1. Optimized Linux File System Layout for a 50 GB Server
+
+The server has 50 GB storage for the OS, logs, user files, and application data. Rapidly growing logs can fill the disk and cause critical services to fail. Therefore, separate partitions/LVM volumes should be used.
+
+Recommended Layout
+
+* `/boot` → 1 GB
+* `/` → 10 GB
+* `/var` → 12 GB
+* `/home` → 8 GB
+* `/opt` → 5 GB
+* `/tmp` → 2 GB
+* Swap → 4 GB
+* Reserved/free space → 8 GB
+  `/var` should be isolated because system logs are normally stored under `/var/log`. This prevents logs from filling the root filesystem.
+
+Log Rotation
+
+Use `logrotate` to automatically rotate, compress, and delete old logs:
+
+```bash
+sudo nano /etc/logrotate.d/system-logs
+```
+
+```text
+/var/log/*.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    size 1G
+    maxsize 1G
+    copytruncate
+}
+```
+
+Monitor disk usage:
+
+```bash
+df -h
+du -sh /var/log/*
+```
+
+A simple warning script:
+
+```bash
+#!/bin/bash
+USAGE=$(df /var | awk 'NR==2 {print $5}' | tr -d '%')
+if [ "$USAGE" -ge 85 ]; then
+    echo "WARNING: /var is ${USAGE}% full"
+fi
+```
+Using a dedicated `/var` filesystem below the 10 GB log limit, log rotation, compression, monitoring, and reserved space prevents disk exhaustion and keeps critical services running.
+
+
+ 2. Kernel-Level Optimization for High CPU Workloads
+Frequent context switching wastes CPU time because the processor repeatedly switches between processes. Since hardware cannot be upgraded, kernel scheduling and process-management techniques should be optimized.
+
+Scheduler and Priority Tuning
+Use `nice` and `renice` to control process priority:
+
+```bash
+nice -n 10 ./program
+sudo renice 10 -p PID
+```
+For real-time workloads, use real-time scheduling carefully:
+
+```bash
+sudo chrt -f 50 ./program
+```
+
+`SCHED_FIFO` can provide predictable execution, but excessive real-time priority can starve other processes.
+
+### CPU Affinity
+
+Bind CPU-intensive processes to selected CPU cores:
+
+```bash
+taskset -c 0,1 ./program
+taskset -cp 0,1 PID
+```
+
+This can improve cache locality and reduce unnecessary CPU migration.
+
+### Kernel Modules
+
+Check loaded modules:
+
+```bash
+lsmod
+```
+
+Load a required module:
+
+```bash
+sudo modprobe module_name
+```
+
+Remove an unnecessary module:
+
+```bash
+sudo modprobe -r module_name
+```
+ Monitor Context Switching
+
+```bash
+vmstat 1
+pidstat -w 1
+```
+
+`vmstat` shows context-switch activity, while `pidstat` helps identify processes causing excessive switching.
+Conclusion
+Scheduler priorities, CPU affinity, real-time scheduling, removal of unnecessary background activity, and proper kernel-module management can reduce context-switching overhead and improve real-time performance without hardware upgrades.
+
+
+ 3. Processing 1 Million Log Entries Within 2 Minutes
+Processing 1 million entries requires minimizing process creation and avoiding shell loops that execute commands repeatedly. `awk` is highly efficient because it can process the entire file in a single pass.
+
+Count Errors
+
+```bash
+awk '$3 == "ERROR" {count++} END {print "Errors:", count}' server.log
+```
+
+ Count All Log Levels
+
+```bash
+awk '{count[$3]++} END {for (level in count) print level, count[level]}' server.log
+```
+
+Process Multiple Statistics in One Pass
+```bash
+awk '
+{
+    total++
+    if ($3 == "ERROR") errors++
+    if ($3 == "WARNING") warnings++
+    count[$3]++
+}
+END {
+    print "Total:", total
+    print "Errors:", errors
+    print "Warnings:", warnings
+    for (level in count) print level, count[level]
+}' server.log
+```
+
+### Efficient Commands
+
+Instead of:
+
+```bash
+cat server.log | grep ERROR
+```
+
+use:
+
+```bash
+grep ERROR server.log
+```
+
+For counting:
+
+```bash
+grep -c ERROR server.log
+```
+
+Use `sort` only when sorting is actually required:
+
+```bash
+awk '{count[$3]++} END {for (x in count) print count[x], x}' server.log | sort -nr
+```
+
+Measure execution time:
+
+```bash
+/usr/bin/time -v ./process_logs.sh
+```
+
+Conclusion
+`awk` is the preferred tool because it can filter, count, and aggregate data in one pass. Avoiding `cat`, unnecessary pipelines, temporary files, and per-line shell loops minimizes overhead and provides the best chance of processing 1 million entries within the 2-minute requirement.
+
+
+ 4. Managing a Faulty Process Consuming 90% CPU
+
+A faulty process using 90% CPU can reduce system performance and affect other services. The process should be identified, monitored, controlled, and terminated only if necessary.
+
+Identify the Process
+
+```bash
+top
+ps aux --sort=-%cpu | head
+```
+
+Get detailed information:
+
+```bash
+ps -p 2450 -o pid,ppid,user,%cpu,%mem,stat,cmd
+lsof -p 2450
+pstree -p 2450
+```
+ Monitor It
+
+```bash
+top -p 2450
+pidstat -p 2450 1
+```
+Reduce CPU Priority
+If the process should continue running but must not dominate the CPU:
+
+```bash
+sudo renice 10 -p 2450
+```
+
+ Limit a Service
+
+For a systemd service:
+
+```bash
+sudo systemctl set-property faulty.service CPUQuota=20%
+```
+
+Gracefully Terminate
+First send `SIGTERM`:
+
+```bash
+sudo kill -TERM 2450
+```
+
+If it refuses to terminate:
+
+```bash
+sudo kill -KILL 2450
+```
+
+`SIGKILL` should only be used as a last resort.
+
+Service Management
+```bash
+systemctl status faulty.service
+sudo systemctl stop faulty.service
+```
+
+If it repeatedly restarts and is confirmed unnecessary:
+
+```bash
+sudo systemctl disable faulty.service
+```
+
+Critical services should be checked separately:
+
+```bash
+systemctl --failed
+systemctl status critical-service
+```
+ Conclusion
+The correct strategy is **Identify → Monitor → Lower Priority/Limit CPU → Gracefully Stop → Force Kill if necessary**. This restores CPU resources without rebooting the server or unnecessarily interrupting critical services.
+ 
+
+5. Resource Allocation for 5 Virtual Machines with 16 GB RAM
+ Analysis
+Available RAM = 16 GB. The host requires 4 GB and each of 5 VMs requires at least 2 GB.
+```text
+VM RAM = 5 × 2 GB = 10 GB
+Host RAM = 4 GB
+Total = 14 GB
+Remaining = 16 - 14 = 2 GB
+```
+Recommended Allocation
+```text
+Host OS → 4 GB
+VM1     → 2 GB
+VM2     → 2 GB
+VM3     → 2 GB
+VM4     → 2 GB
+VM5     → 2 GB
+Reserve → 2 GB
+Total   → 16 GB
+```
+
+This satisfies the minimum requirement of every VM while maintaining a 2 GB reserve.
+
+ Memory Management
+Use memory ballooning to dynamically return unused VM memory to the host. Avoid aggressive memory overcommitment because all VMs require at least 2 GB.
+Monitor host memory:
+
+```bash
+free -h
+```
+
+Monitor VMs:
+
+```bash
+virsh dominfo VM_NAME
+```
+
+General monitoring:
+
+```bash
+top
+htop
+```
+
+Swap can be used as an emergency mechanism, but heavy swapping should be avoided because it significantly reduces VM performance.
+
+Conclusion
+The most efficient safe allocation is **4 GB for the host, 2 GB for each VM, and 2 GB reserve**. Memory ballooning and monitoring can improve utilization, while excessive overcommitment should be avoided.
+
+ Overall Summary
+* **Storage:** Separate `/var`, use `logrotate`, compression, monitoring, and reserved space.
+* **CPU:** Tune scheduler priority, CPU affinity, real-time scheduling, and kernel modules.
+* **Logs:** Use `awk`, `grep`, and `sort`; avoid inefficient shell loops.
+* **Processes:** Use `top`, `ps`, `pidstat`, `renice`, `kill`, and systemd controls.
+* **Virtualization:** Allocate 4 GB to the host and 2 GB minimum to each VM, retaining 2 GB reserve.
