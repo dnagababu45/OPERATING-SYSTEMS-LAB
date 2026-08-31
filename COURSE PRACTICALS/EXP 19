@@ -1,0 +1,30 @@
+#include <stdio.h>
+#include <pthread.h>
+
+pthread_mutex_t lock;
+int count=0;
+
+void *fun(void *arg) {
+    int id=*(int*)arg;
+    pthread_mutex_lock(&lock);
+
+    printf("Thread %d entered critical section\n",id);
+    count++;
+    printf("Count = %d\n",count);
+
+    pthread_mutex_unlock(&lock);
+    return NULL;
+}
+
+int main() {
+    pthread_t t1,t2;
+    int a=1,b=2;
+
+    pthread_mutex_init(&lock,NULL);
+    pthread_create(&t1,NULL,fun,&a);
+    pthread_create(&t2,NULL,fun,&b);
+    pthread_join(t1,NULL);
+    pthread_join(t2,NULL);
+
+    return 0;
+}
