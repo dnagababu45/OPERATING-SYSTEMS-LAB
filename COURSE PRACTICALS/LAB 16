@@ -1,0 +1,27 @@
+#include <stdio.h>
+
+struct Emp {
+    int id;
+    char name[20];
+    float salary;
+};
+
+int main() {
+    FILE *fp;
+    struct Emp e[2]={{101,"Ravi",25000},{102,"Kumar",30000}};
+    int pos=2;
+
+    fp=fopen("emp.dat","wb");
+    fwrite(e,sizeof(e),1,fp);
+    fclose(fp);
+
+    fp=fopen("emp.dat","rb");
+    fseek(fp,(pos-1)*sizeof(struct Emp),SEEK_SET);
+    fread(&e[0],sizeof(struct Emp),1,fp);
+
+    printf("Record Number: %d\n",pos);
+    printf("ID: %d\nName: %s\nSalary: %.2f\n",
+           e[0].id,e[0].name,e[0].salary);
+    fclose(fp);
+    return 0;
+}
