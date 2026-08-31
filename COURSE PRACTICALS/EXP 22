@@ -1,0 +1,19 @@
+#include <stdio.h>
+
+int main() {
+    int b[]={100,500,200},p[]={90,400,150};
+    int i,j,k;
+
+    for(i=0;i<3;i++) {
+        k=-1;
+        for(j=0;j<3;j++)
+            if(b[j]>=p[i] && (k==-1 || b[j]<b[k]))
+                k=j;
+
+        if(k!=-1) {
+            printf("P%d -> Block %d\n",i+1,k+1);
+            b[k]-=p[i];
+        }
+    }
+    return 0;
+}
