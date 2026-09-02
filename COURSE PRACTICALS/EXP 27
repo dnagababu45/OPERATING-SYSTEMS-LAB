@@ -1,0 +1,15 @@
+#include <stdio.h>
+#include <dirent.h>
+
+int main() {
+    DIR *d=opendir(".");
+    struct dirent *e;
+
+    printf("Files:\n");
+    while((e=readdir(d))!=NULL)
+        if(e->d_name[0]!='.')
+            printf("%s\n",e->d_name);
+
+    closedir(d);
+    return 0;
+}
